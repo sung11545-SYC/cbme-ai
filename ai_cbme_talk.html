@@ -1,0 +1,1651 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生成式 AI 在 CBME 教學的實務應用｜互動式大綱地圖</title>
+<style>
+:root {
+  --cream: #FAF8F4;
+  --cream-2: #F3EFE7;
+  --cream-card: rgba(251, 249, 244, 0.94);
+  --sea-bg: #DCEBF1;
+  --sea-deep: #BFD8E3;
+  --ink: #2C221E;
+  --muted: #6E625B;
+  --line: #E5DDD2;
+  --coral: #E06D44;
+  --coral-soft: #FDECE6;
+  --plan: #1F8A4C;
+  --plan-soft: #E5F5EC;
+  --do: #6A49C8;
+  --do-soft: #EFEAFA;
+  --check: #B8741A;
+  --check-soft: #FDF1E1;
+  --act: #1D5FD0;
+  --act-soft: #E7F0FD;
+  --teal: #1A8A7D;
+  --shadow-lg: 0 20px 55px rgba(38, 28, 22, 0.16);
+  --shadow-sm: 0 6px 18px rgba(38, 28, 22, 0.09);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  width: 100%; height: 100%; overflow: hidden;
+  font-family: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  color: var(--ink);
+  background: radial-gradient(circle at 50% 35%, #EEF6F9 0%, var(--sea-bg) 58%, var(--sea-deep) 100%);
+  user-select: none;
+}
+
+/* Subtle decorative island waves in background */
+.bg-deco {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.bg-deco svg { width: 100%; height: 100%; opacity: 0.45; }
+
+/* Sleek Single-Row Top Bar (Never wraps or covers the image) */
+.topbar {
+  position: fixed; top: 12px; left: 20px; right: 20px; height: 54px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  pointer-events: none; z-index: 30;
+}
+.brand-card {
+  pointer-events: auto;
+  background: var(--cream-card);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255,255,255,0.9);
+  border-radius: 16px;
+  padding: 7px 15px 7px 10px;
+  box-shadow: var(--shadow-sm);
+  display: inline-flex; align-items: center; gap: 11px;
+  cursor: pointer; transition: transform .2s, box-shadow .2s;
+  min-width: 0;
+}
+.brand-card:hover { transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+.brand-tag {
+  background: var(--coral); color: #fff; font-weight: 900;
+  font-size: 12px; letter-spacing: 0.05em; padding: 5px 10px;
+  border-radius: 10px; white-space: nowrap;
+}
+.brand-title { display: flex; align-items: baseline; gap: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.brand-title h1 { font-size: 17px; font-weight: 900; color: var(--ink); }
+.brand-title p { font-size: 12.5px; color: var(--muted); font-weight: 600; }
+@media (max-width: 1150px) { .brand-title p { display: none; } }
+
+.nav-pills {
+  pointer-events: auto;
+  display: flex; gap: 8px; align-items: center; flex-shrink: 0;
+}
+.pill-btn {
+  background: var(--cream-card);
+  backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255,255,255,0.9);
+  color: var(--ink); font-weight: 800; font-size: 13.5px;
+  padding: 8px 13px; border-radius: 13px;
+  box-shadow: var(--shadow-sm); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all .18s; font-family: inherit; white-space: nowrap;
+}
+.pill-btn:hover { background: #fff; transform: translateY(-1px); }
+.pill-btn.active { background: var(--ink); color: var(--cream); border-color: var(--ink); }
+
+/* Main Interactive Map Stage — Generous padding so top & bottom bars never touch the map */
+#mapViewport {
+  position: fixed; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  padding: 76px 28px 66px;
+  z-index: 5;
+}
+#mapCanvas {
+  position: relative;
+  width: min(1320px, calc((100vh - 146px) * 1.5), calc(100vw - 56px));
+  aspect-ratio: 1536 / 1024;
+  background: #fff;
+  border-radius: 24px;
+  padding: 8px;
+  box-shadow: 0 22px 60px rgba(27, 46, 68, 0.18), 0 0 0 6px rgba(255, 255, 255, 0.7);
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center center;
+}
+#mapInner {
+  position: relative; width: 100%; height: 100%;
+  border-radius: 18px; overflow: hidden;
+  background: #fff;
+}
+#mapInner > img.base-map {
+  width: 100%; height: 100%; object-fit: fill; display: block;
+  pointer-events: none;
+}
+
+/* Clean, Unobstructed Hotspot Zones mapped to 大綱.png boxes */
+.hotspot-zone {
+  position: absolute;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  border: 2.5px solid rgba(255, 255, 255, 0);
+  z-index: 8;
+}
+/* Subtle corner pulse dot so user knows it's interactive without covering any text */
+.hotspot-zone::after {
+  content: "↗";
+  position: absolute;
+  top: 6px; right: 6px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--zone-color, var(--coral));
+  color: #fff;
+  font-size: 12px; font-weight: 900;
+  display: grid; place-items: center;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.22);
+  opacity: 0.82;
+  transform: scale(0.92);
+  transition: transform 0.2s, opacity 0.2s;
+}
+.hotspot-zone.no-badge::after { display: none; }
+body.hide-dots .hotspot-zone::after { opacity: 0; }
+
+.hotspot-zone:hover, .hotspot-zone.hovered, .hotspot-zone.selected {
+  background: color-mix(in srgb, var(--zone-color, var(--coral)) 10%, transparent);
+  border-color: var(--zone-color, var(--coral));
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.85), 0 12px 32px rgba(15, 23, 42, 0.22);
+}
+.hotspot-zone:hover::after, .hotspot-zone.hovered::after, .hotspot-zone.selected::after {
+  opacity: 1;
+  transform: scale(1.12);
+}
+
+/* Non-overlapping Hover Banner at top-center of map */
+#hoverBanner {
+  position: absolute;
+  top: 12px; left: 50%; transform: translate(-50%, -8px);
+  background: rgba(28, 22, 18, 0.90);
+  backdrop-filter: blur(8px);
+  color: #fff;
+  padding: 7px 18px;
+  border-radius: 999px;
+  font-size: 14px; font-weight: 800;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s, transform 0.18s;
+  z-index: 20;
+  white-space: nowrap;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+}
+#hoverBanner.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+/* Bottom Step Dock (Heart Island style clean pill dock outside the image) */
+.bottom-dock {
+  position: fixed; bottom: 12px; left: 50%; transform: translateX(-50%);
+  background: var(--cream-card); backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255,255,255,0.9);
+  border-radius: 999px; padding: 6px 10px;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: var(--shadow-sm); z-index: 25;
+  max-width: calc(100vw - 24px); overflow-x: auto;
+}
+.dock-pill {
+  border: 1.5px solid transparent;
+  background: #fff;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13px; font-weight: 800;
+  padding: 6px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex; align-items: center; gap: 6px;
+  white-space: nowrap;
+  transition: all 0.18s;
+}
+.dock-pill .d-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--d-color, var(--coral));
+}
+.dock-pill:hover, .dock-pill.hovered, .dock-pill.active {
+  background: var(--d-color, var(--coral));
+  color: #fff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.dock-pill:hover .d-dot, .dock-pill.hovered .d-dot, .dock-pill.active .d-dot {
+  background: #fff;
+}
+
+/* =====================================================
+   HEART ISLAND STYLE DETAIL SHEET / MODAL
+   ===================================================== */
+.detail-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(28, 22, 18, 0.28);
+  backdrop-filter: blur(3px);
+  z-index: 40;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+.detail-backdrop.open { opacity: 1; pointer-events: auto; }
+
+.detail-sheet {
+  position: fixed;
+  left: 50%; bottom: 16px;
+  transform: translate(-50%, 106%);
+  width: min(1080px, calc(100vw - 32px));
+  height: 80vh;
+  background: var(--cream);
+  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border-radius: 28px;
+  box-shadow: 0 28px 80px rgba(25, 18, 14, 0.32);
+  z-index: 50;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1), height 0.28s ease, width 0.28s ease;
+  user-select: text;
+}
+.detail-sheet.open { transform: translate(-50%, 0); }
+.detail-sheet.expanded {
+  height: calc(100vh - 28px);
+  width: min(1260px, calc(100vw - 24px));
+}
+
+.sheet-handle {
+  width: 54px; height: 5px; border-radius: 999px;
+  background: #D5CBBF; margin: 10px auto 2px; flex-shrink: 0;
+  cursor: pointer;
+}
+
+.sheet-header {
+  padding: 12px 26px 14px;
+  border-bottom: 1px solid var(--line);
+  display: flex; align-items: flex-start; gap: 16px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.75) 0%, rgba(250,248,244,0) 100%);
+  flex-shrink: 0;
+}
+.sheet-badge {
+  min-width: 58px; height: 58px;
+  border-radius: 16px;
+  background: var(--node-soft, var(--coral-soft));
+  color: var(--node-color, var(--coral));
+  border: 1.5px solid rgba(0,0,0,0.06);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-weight: 900; font-size: 16px; line-height: 1.15; padding: 6px;
+  flex-shrink: 0;
+}
+.sheet-badge small { font-size: 10.5px; opacity: 0.85; font-weight: 800; }
+.sheet-title-wrap { flex: 1; min-width: 0; }
+.sheet-eyebrow {
+  font-size: 12px; font-weight: 900; letter-spacing: 0.08em;
+  text-transform: uppercase; color: var(--node-color, var(--coral));
+  margin-bottom: 2px;
+}
+.sheet-title { font-size: 24px; font-weight: 900; color: var(--ink); line-height: 1.25; }
+.sheet-quote {
+  margin-top: 6px; padding-left: 12px;
+  border-left: 3.5px solid var(--node-color, var(--coral));
+  color: var(--muted); font-size: 14.5px; font-weight: 600;
+}
+.sheet-meta-pills {
+  display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px;
+}
+.meta-pill {
+  font-size: 12.5px; font-weight: 800; padding: 3px 11px;
+  border-radius: 999px; background: #fff; border: 1px solid var(--line);
+  color: var(--ink); display: inline-flex; align-items: center; gap: 5px;
+}
+.meta-pill .c-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--node-color, var(--coral)); }
+
+.sheet-controls {
+  display: flex; align-items: center; gap: 7px; flex-shrink: 0;
+}
+.icon-btn {
+  height: 38px; padding: 0 12px; border-radius: 11px;
+  border: 1px solid var(--line); background: #fff;
+  color: var(--ink); font-weight: 800; font-size: 13.5px;
+  cursor: pointer; display: inline-flex; align-items: center; gap: 5px;
+  transition: all .15s; font-family: inherit;
+}
+.icon-btn:hover { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+/* Sheet Body: Heart Island Sub-Item Accordion + Rich Content */
+.sheet-body {
+  flex: 1; overflow-y: auto; padding: 18px 26px 30px;
+  display: flex; flex-direction: column; gap: 14px;
+}
+.section-label {
+  font-size: 12.5px; font-weight: 900; color: var(--muted);
+  letter-spacing: 0.08em; text-transform: uppercase;
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+.subitem-list { display: flex; flex-direction: column; gap: 11px; }
+.subitem {
+  background: #fff;
+  border: 1.5px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.subitem.open {
+  border-color: var(--node-color, var(--coral));
+  box-shadow: 0 8px 24px rgba(38, 28, 22, 0.07);
+}
+.subitem-head {
+  width: 100%; padding: 14px 18px;
+  background: #fff; border: 0; text-align: left;
+  display: flex; align-items: center; gap: 12px;
+  cursor: pointer; font-family: inherit;
+  transition: background 0.15s;
+}
+.subitem-head:hover { background: #FCFBF9; }
+.subitem-dot {
+  width: 10px; height: 10px; border-radius: 50%;
+  background: var(--node-color, var(--coral)); flex-shrink: 0;
+}
+.subitem-title {
+  font-size: 17px; font-weight: 800; color: var(--ink); flex: 1;
+}
+.subitem-tag {
+  font-size: 12.5px; font-weight: 700; color: var(--muted);
+  background: var(--cream-2); padding: 4px 10px; border-radius: 999px;
+}
+.subitem-arrow {
+  font-size: 16px; color: var(--muted); font-weight: 900;
+  transition: transform 0.25s;
+}
+.subitem.open .subitem-arrow { transform: rotate(90deg); color: var(--node-color, var(--coral)); }
+
+.subitem-content {
+  display: none;
+  padding: 6px 20px 20px;
+  border-top: 1px dashed var(--line);
+  font-size: 16px; line-height: 1.65; color: #362C27;
+}
+.subitem.open .subitem-content { display: block; }
+
+/* Content widgets inside subitems */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 12px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 12px; }
+
+.info-card {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px 16px;
+}
+.info-card h4 {
+  font-size: 16px; font-weight: 900; color: var(--ink);
+  margin-bottom: 6px; display: flex; align-items: center; gap: 6px;
+}
+.info-card ul, .subitem-content ul, .subitem-content ol { padding-left: 20px; margin-top: 4px; }
+.info-card li, .subitem-content li { margin: 4px 0; }
+
+.flow-steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
+  gap: 10px; margin: 12px 0;
+}
+.flow-step {
+  background: var(--cream);
+  border: 1px solid var(--line);
+  border-top: 4px solid var(--node-color, var(--coral));
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 14px; line-height: 1.45;
+}
+.flow-step .fn {
+  display: inline-flex; width: 22px; height: 22px; border-radius: 50%;
+  background: var(--node-color, var(--coral)); color: #fff;
+  font-weight: 900; font-size: 12px; align-items: center; justify-content: center;
+  margin-right: 5px;
+}
+.flow-step strong { color: var(--ink); font-size: 14.5px; }
+.flow-step p { color: var(--muted); margin-top: 4px; font-size: 13px; }
+
+.prompt-box {
+  background: #1B2434; color: #ECF2FF;
+  border-radius: 14px; padding: 14px 16px;
+  margin-top: 12px; position: relative;
+  font-size: 14.5px; line-height: 1.6;
+}
+.prompt-box .p-head {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 6px; color: #93B4FF; font-size: 12.5px; font-weight: 800;
+}
+.copy-btn {
+  background: var(--coral); color: #fff; border: 0;
+  border-radius: 8px; padding: 4px 12px; font-size: 12.5px;
+  font-weight: 800; cursor: pointer; font-family: inherit;
+}
+.copy-btn:hover { filter: brightness(1.08); }
+.prompt-box pre { white-space: pre-wrap; font-family: inherit; margin: 0; }
+
+.chat-sim {
+  background: var(--cream); border: 1.5px solid var(--line);
+  border-radius: 14px; padding: 14px; margin-top: 12px;
+  display: flex; flex-direction: column; gap: 9px;
+}
+.chat-sim .chat-cap {
+  font-size: 12.5px; font-weight: 800; color: var(--muted);
+  border-bottom: 1px solid var(--line); padding-bottom: 6px;
+}
+.chat-bubble {
+  padding: 10px 14px; border-radius: 13px; font-size: 14.5px; line-height: 1.55;
+  max-width: 94%;
+}
+.chat-bubble.user {
+  background: #DFEAFF; color: #162B54; align-self: flex-end;
+  border-bottom-right-radius: 3px; font-weight: 700;
+}
+.chat-bubble.ai {
+  background: #fff; border: 1px solid var(--line);
+  align-self: flex-start; border-bottom-left-radius: 3px;
+}
+.chat-bubble small { display: block; color: var(--muted); font-size: 12px; margin-top: 4px; }
+
+.diagram-card {
+  margin-top: 12px; background: #fff; border: 1.5px solid var(--line);
+  border-radius: 14px; padding: 10px; text-align: center;
+}
+.diagram-card img {
+  max-width: 100%; max-height: 350px; object-fit: contain;
+  border-radius: 10px; cursor: zoom-in; transition: transform .2s;
+}
+.diagram-card img:hover { transform: scale(1.01); }
+.diagram-cap { font-size: 12.5px; color: var(--muted); font-weight: 700; margin-top: 6px; }
+
+table.clean-tbl {
+  width: 100%; border-collapse: collapse; margin-top: 10px;
+  font-size: 14px; background: #fff; border-radius: 10px; overflow: hidden;
+}
+table.clean-tbl th, table.clean-tbl td {
+  border: 1px solid var(--line); padding: 7px 10px; text-align: center;
+}
+table.clean-tbl th { background: var(--cream-2); font-weight: 800; color: var(--ink); }
+table.clean-tbl td.warn-cell { background: #FDE5E5; color: #B91C1C; font-weight: 800; }
+
+.callout {
+  margin-top: 12px; padding: 10px 14px; border-radius: 12px;
+  font-size: 14.5px; font-weight: 600;
+}
+.callout.tip { background: #FFF8E6; border: 1px solid #F0D58A; color: #6B4E09; }
+.callout.warn { background: #FDECEC; border: 1px solid #F3B7B7; color: #8A1F1F; }
+.callout.ok { background: #E7F6ED; border: 1px solid #A8DAB9; color: #145A32; }
+
+.quiz-box {
+  margin-top: 12px; background: #fff; border: 1.5px solid var(--line);
+  border-radius: 14px; padding: 14px;
+}
+.quiz-opt {
+  display: block; width: 100%; text-align: left;
+  margin-top: 8px; padding: 10px 14px; border-radius: 10px;
+  border: 1.5px solid var(--line); background: var(--cream);
+  font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+}
+.quiz-opt:hover { border-color: var(--do); }
+.quiz-opt.correct { background: #DFF5E8; border-color: var(--plan); color: #0F5132; }
+.quiz-opt.wrong { background: #FDE5E5; border-color: #D9534F; color: #842029; }
+
+/* Index / Prompt Drawer */
+.index-drawer {
+  position: fixed; right: 20px; top: 72px; bottom: 62px;
+  width: min(440px, calc(100vw - 40px));
+  background: var(--cream);
+  border: 1.5px solid rgba(255,255,255,0.9);
+  border-radius: 24px;
+  box-shadow: var(--shadow-lg);
+  z-index: 45;
+  display: flex; flex-direction: column; overflow: hidden;
+  transform: translateX(115%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  user-select: text;
+}
+.index-drawer.open { transform: translateX(0); }
+.drawer-head {
+  padding: 15px 20px; border-bottom: 1px solid var(--line);
+  display: flex; justify-content: space-between; align-items: center;
+}
+.drawer-tabs { display: flex; gap: 8px; padding: 12px 20px 0; }
+.drawer-tab {
+  flex: 1; padding: 9px 12px; border-radius: 12px;
+  border: 1px solid var(--line); background: #fff;
+  font-weight: 800; font-size: 13.5px; cursor: pointer; font-family: inherit;
+}
+.drawer-tab.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+.drawer-body { flex: 1; overflow-y: auto; padding: 14px 20px 22px; display: flex; flex-direction: column; gap: 10px; }
+.index-item {
+  background: #fff; border: 1.5px solid var(--line);
+  border-radius: 14px; padding: 12px 15px; cursor: pointer;
+  display: flex; align-items: center; gap: 12px;
+  transition: all .15s;
+}
+.index-item:hover { border-color: var(--coral); transform: translateX(3px); }
+
+/* Image Lightbox */
+#lightbox {
+  position: fixed; inset: 0; background: rgba(15, 20, 28, 0.88);
+  z-index: 90; display: none; align-items: center; justify-content: center;
+  padding: 28px; cursor: zoom-out;
+}
+#lightbox.show { display: flex; }
+#lightbox img {
+  max-width: 95vw; max-height: 90vh; border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.5); background: #fff;
+}
+</style>
+</head>
+<body>
+
+<!-- Subtle island wave backdrop -->
+<div class="bg-deco" aria-hidden="true">
+  <svg viewBox="0 0 1440 900" preserveAspectRatio="none">
+    <path d="M0,160 C320,240 520,60 920,140 C1200,196 1340,110 1440,150 L1440,0 L0,0 Z" fill="#FFFFFF" opacity="0.5"/>
+    <path d="M0,780 C380,700 680,850 1080,760 C1260,720 1370,770 1440,790 L1440,900 L0,900 Z" fill="#FFFFFF" opacity="0.4"/>
+  </svg>
+</div>
+
+<!-- Sleek Single-Row Top Bar -->
+<header class="topbar">
+  <div class="brand-card" onclick="resetOverview()" title="點擊回到大綱全景">
+    <span class="brand-tag">CBME × AI</span>
+    <div class="brand-title">
+      <h1>生成式 AI 在 CBME 教學的實務應用</h1>
+      <p>宋宜倩 物理治療師｜直接點選《大綱》各區塊展開說明</p>
+    </div>
+  </div>
+
+  <div class="nav-pills">
+    <button class="pill-btn" onclick="resetOverview()">↗ 全景大綱</button>
+    <button class="pill-btn" id="dotToggleBtn" onclick="toggleCornerDots()">✦ 隱藏/顯示角落提示點</button>
+    <button class="pill-btn" id="drawerBtn" onclick="toggleDrawer()">☰ 步驟清單 &amp; 提示詞庫</button>
+    <button class="pill-btn" onclick="toggleFull()">⛶ 全螢幕</button>
+  </div>
+</header>
+
+<!-- Main Interactive Outline Map Stage (100% clean 大綱.png without overlapping text labels) -->
+<main id="mapViewport" onclick="if(event.target===this) resetOverview()">
+  <div id="mapCanvas">
+    <div id="mapInner">
+      <div id="hoverBanner">點擊展開說明</div>
+      <img class="base-map" src="大綱.png" alt="CBME × AI 智慧教學大綱總覽圖">
+
+      <!-- Clean Hotspot Zones aligned to the exact boxes on 大綱.png -->
+      <!-- 01: Top Transformation (現有教學模式 -> AI -> 勝任能力導向智慧教學) -->
+      <div class="hotspot-zone" data-node="0" style="left:9.5%; top:1.2%; width:80%; height:17.2%; --zone-color:#E06D44;"></div>
+
+      <!-- 02: Center PDCA Cycle Wheel (AI 五步驟心法 & 工具地圖) -->
+      <div class="hotspot-zone" data-node="1" style="left:36.5%; top:18.6%; width:23.0%; height:29.2%; border-radius:50%; --zone-color:#1A8A7D;"></div>
+
+      <!-- 03: Step 1-3 Plan (Upper-left box + Bottom-left card) -->
+      <div class="hotspot-zone" data-node="2" style="left:3.5%; top:19.8%; width:26.9%; height:10.6%; --zone-color:#1F8A4C;"></div>
+      <div class="hotspot-zone no-badge" data-node="2" style="left:2.3%; top:63.8%; width:23.2%; height:27.5%; --zone-color:#1F8A4C;"></div>
+
+      <!-- 04: Step 4 Do (Upper-right box + Bottom-mid-left card) -->
+      <div class="hotspot-zone" data-node="3" style="left:65.1%; top:19.8%; width:31.3%; height:10.6%; --zone-color:#6A49C8;"></div>
+      <div class="hotspot-zone no-badge" data-node="3" style="left:26.2%; top:63.8%; width:23.1%; height:27.5%; --zone-color:#6A49C8;"></div>
+
+      <!-- 05: Step 5 Check (Mid-right box + Bottom-mid-right card) -->
+      <div class="hotspot-zone" data-node="4" style="left:65.1%; top:33.0%; width:31.3%; height:10.6%; --zone-color:#B8741A;"></div>
+      <div class="hotspot-zone no-badge" data-node="4" style="left:50.0%; top:63.8%; width:23.1%; height:27.5%; --zone-color:#B8741A;"></div>
+
+      <!-- 06: Step 6 Act (Mid-left box + Bottom-right card) -->
+      <div class="hotspot-zone" data-node="5" style="left:3.5%; top:33.0%; width:26.9%; height:10.6%; --zone-color:#1D5FD0;"></div>
+      <div class="hotspot-zone no-badge" data-node="5" style="left:73.8%; top:63.8%; width:23.1%; height:27.5%; --zone-color:#1D5FD0;"></div>
+
+      <!-- 07: Middle Platform Bridge (教師端 ↔ 電子護照 ↔ 學生端) & Bottom Goal Banner -->
+      <div class="hotspot-zone" data-node="6" style="left:15.5%; top:45.2%; width:66.5%; height:17.8%; --zone-color:#0F2A52;"></div>
+      <div class="hotspot-zone no-badge" data-node="6" style="left:2.3%; top:92.3%; width:94.6%; height:6.0%; --zone-color:#0F2A52;"></div>
+    </div>
+  </div>
+</main>
+
+<!-- Bottom Step Dock (Labels live cleanly outside the diagram so nothing is covered!) -->
+<footer class="bottom-dock" id="bottomDock"></footer>
+
+<!-- Right Index & Prompt Library Drawer -->
+<aside class="index-drawer" id="indexDrawer">
+  <div class="drawer-head">
+    <div>
+      <div style="font-size:12px;font-weight:900;color:var(--coral);letter-spacing:.08em;">CBME × AI DIRECTORY</div>
+      <h3 style="font-size:19px;font-weight:900;">教學步驟清單 &amp; 提示詞庫</h3>
+    </div>
+    <button class="icon-btn" onclick="toggleDrawer(false)">✕</button>
+  </div>
+  <div class="drawer-tabs">
+    <button class="drawer-tab active" id="tabStepsBtn" onclick="switchDrawerTab('steps')">📍 7 大步驟區塊</button>
+    <button class="drawer-tab" id="tabPromptsBtn" onclick="switchDrawerTab('prompts')">📋 提示詞庫（一鍵複製）</button>
+  </div>
+  <div class="drawer-body" id="drawerContent"></div>
+</aside>
+
+<!-- Heart Island Style Slide-Up Detail Card -->
+<div class="detail-backdrop" id="detailBackdrop" onclick="closeNode()"></div>
+<section class="detail-sheet" id="detailSheet" aria-live="polite">
+  <div class="sheet-handle" onclick="toggleSheetExpand()" title="點擊切換視窗高度"></div>
+  <header class="sheet-header">
+    <div class="sheet-badge" id="sheetBadge"></div>
+    <div class="sheet-title-wrap">
+      <div class="sheet-eyebrow" id="sheetEyebrow"></div>
+      <h2 class="sheet-title" id="sheetTitle"></h2>
+      <div class="sheet-quote" id="sheetQuote"></div>
+      <div class="sheet-meta-pills" id="sheetPills"></div>
+    </div>
+    <div class="sheet-controls">
+      <button class="icon-btn" onclick="stepNode(-1)" title="上一個區塊">← 上一步</button>
+      <button class="icon-btn" onclick="stepNode(1)" title="下一個區塊">下一步 →</button>
+      <button class="icon-btn" id="expandBtn" onclick="toggleSheetExpand()" title="切換全視窗或半視窗">⤢ 放大視窗</button>
+      <button class="icon-btn" onclick="closeNode()" title="關閉並回到大綱">✕ 關閉</button>
+    </div>
+  </header>
+  <div class="sheet-body" id="sheetBody"></div>
+</section>
+
+<!-- Image Zoom Lightbox -->
+<div id="lightbox" onclick="this.classList.remove('show')">
+  <img id="lightboxImg" src="" alt="放大預覽">
+</div>
+
+<script>
+/* ============================================================================
+   7 NODES MAPPED DIRECTLY TO 大綱.png (WITH ALL 8 AI DEMOS & WORKFLOW IMAGES)
+   ============================================================================ */
+const NODES = [
+  {
+    id: 0,
+    code: "01",
+    sub: "CORE",
+    dockLabel: "01｜CBME × 醫檢 EPAs",
+    eyebrow: "FOUNDATION · 現有教學模式 → 勝任能力導向智慧教學",
+    title: "CBME 白話版 × 《醫檢師 EPAs（第一版）》公版架構",
+    quote: "「從『教了多少時數』到『學員能安全地完成什麼臨床任務』—— AI 僅作為備課與文書整理的輔助工具，臨床教師的專業判斷才是核心。」",
+    color: "#E06D44",
+    soft: "#FDECE6",
+    zoom: { x: 0, y: 24, scale: 1.32 },
+    pills: ["CBME 核心概念", "Frank et al. (2010)", "6 大核心能力 × 5 項公版 EPA", "8 項 EPA 描述格式"],
+    items: [
+      {
+        title: "① 本次分享重點與架構總覽",
+        tag: "核心主軸",
+        open: false,
+        html: `
+          <div class="grid-3">
+            <div class="info-card"><h4>📌 ① 應用情境分享</h4><p><b>常見教學任務範例</b>：以 EPA 初稿整理、教材準備、考站草擬與資料統整為例，探討 AI 工具可能的輔助方式。</p></div>
+            <div class="info-card"><h4>📋 ② 提示詞範本參考</h4><p><b>基礎指令架構</b>：提供各步驟的提示詞（Prompt）基本範例，臨床教師可依各院實際規範與科別需求調整修改。</p></div>
+            <div class="info-card"><h4>🛡 ③ 人工審核與把關</h4><p><b>輔助而非取代</b>：AI 僅能協助初步文字起草與資料整理，所有專業內容與評量判定仍須由臨床教師審核確認。</p></div>
+          </div>
+          <table class="clean-tbl" style="margin-top:14px">
+            <tr><th>PDCA 階段</th><th>大綱區塊與主題</th><th>對應 AI 工具與實務示範</th></tr>
+            <tr><td><b>基礎與心法</b></td><td>CBME 白話版・醫檢公版 EPAs・AI 五步驟心法</td><td>大綱全景・臨床教學 AI 工具地圖・Chrome 問問 Gemini</td></tr>
+            <tr><td><b>Plan（規劃）</b></td><td>步驟 1–3：EPAs 初稿建構與里程碑設定</td><td>示範 1 Gemini Skill（EPA 建構助手）</td></tr>
+            <tr><td><b>Do（執行）</b></td><td>步驟 4：設計學習活動與翻轉教學</td><td>示範 2 Gemini Notebook (NotebookLM)・示範 3 Edcafe Chatbot・示範 4 Gemini 互動式學習網頁</td></tr>
+            <tr><td><b>Check（檢核）</b></td><td>步驟 5：安排評量與學員層級分析（CCC / ILP）</td><td>示範 5 Copilot 資料分析與 ILP・示範 6 OSCE Skill</td></tr>
+            <tr><td><b>Act（改善）</b></td><td>步驟 6：課程層級成效評估（PEC / APE / PDCA）</td><td>示範 7 Copilot 課程 Dashboard 與 APE 初稿</td></tr>
+            <tr><td><b>生態與把關</b></td><td>數位平台整合、導入優勢與挑戰、三不原則</td><td>全流程整合與提示詞庫</td></tr>
+          </table>
+        `
+      },
+      {
+        title: "② CBME 白話版：傳統教學 vs. 勝任能力導向醫學教育",
+        tag: "核心概念",
+        open: false,
+        html: `
+          <div class="grid-2">
+            <div class="info-card">
+              <h4>📚 傳統教學模式</h4>
+              <ul>
+                <li>以<b>課程時數、教學內容</b>為中心</li>
+                <li>學員「輪完訓」就算完成訓練</li>
+                <li>評量偏重一次性、短時間的紙筆或單次測驗</li>
+              </ul>
+            </div>
+            <div class="info-card" style="border-color:var(--act);background:var(--act-soft)">
+              <h4>🎯 CBME 勝任能力導向教學</h4>
+              <ul>
+                <li>以<b>能力成果與臨床表現證據</b>為中心</li>
+                <li>目標：讓學員在<b>不須監督</b>下也能安全、有效率地完成臨床工作</li>
+                <li>透過 <b>EPAs（可信賴專業活動）</b>與<b>信賴等級</b>決定能否授權</li>
+              </ul>
+            </div>
+          </div>
+          <div class="grid-3">
+            <div class="info-card"><h4>🟢 EPA 可信賴專業活動</h4><p>臨床上可觀察、可衡量、可被託付的完整工作單位（例：獨立完成「採血作業」）。</p></div>
+            <div class="info-card"><h4>🟣 信賴等級 Level 1–5</h4><p>L1 只看不做 → L2 直接指導 → L3 間接指導 → <b>L4 可獨立執行（授權門檻）</b> → L5 可指導他人。</p></div>
+            <div class="info-card"><h4>🟠 CCC 臨床能力委員會</h4><p>彙整多元學習證據，集體審議並授權學員信賴等級（達 Level 4 才可工作授權）。</p></div>
+          </div>
+          <div class="callout tip">🎯 <b>為什麼嘗試結合 AI？</b> CBME 涉及較多文件起草、評量紀錄與資料統整，AI 工具可在初步整理上提供部分協助。</div>
+        `
+      },
+      {
+        title: "③ 《醫檢師 EPAs（第一版）》：6 大核心能力 × 5 項公版 EPA × 8 項描述",
+        tag: "台灣醫事檢驗學會 (2023)",
+        open: false,
+        html: `
+          <div class="grid-2">
+            <div class="info-card">
+              <h4>🏅 六大核心能力（適用 PGY／新進醫檢師）</h4>
+              <p style="line-height:2">
+                <span class="meta-pill"><b>MLK</b> 醫檢知識</span>
+                <span class="meta-pill"><b>TS</b> 醫檢技能</span>
+                <span class="meta-pill"><b>Pro</b> 專業素養</span>
+                <span class="meta-pill"><b>PI</b> 專業精進</span>
+                <span class="meta-pill"><b>CS</b> 溝通技巧</span>
+                <span class="meta-pill"><b>SBP</b> 制度下的檢驗工作</span>
+              </p>
+            </div>
+            <div class="info-card">
+              <h4>🧪 五項公版 EPA（本工作坊聚焦 3 項實務範例）</h4>
+              <p><b>▶ 今日示範主軸：</b></p>
+              <ul>
+                <li><b style="color:var(--plan)">EPA 1｜採血作業</b>（OPA1 採血前、OPA2 採血中 8 項、OPA3 採血後 6 項）</li>
+                <li><b style="color:var(--do)">EPA 2｜血庫備血作業</b>（備血前、備血中：血型/抗體篩檢/ABO discrepancy、報告與後處置）</li>
+                <li><b style="color:var(--check)">EPA 5｜自動化生化檢驗分析作業</b>（檢驗前、檢驗中含品管、檢驗後審查/核發/危急值）</li>
+              </ul>
+              <p style="color:var(--muted);font-size:13.5px;margin-top:4px">（另有公版 EPA3 尿液常規檢驗、EPA4 全血球計數與白血球分類作業）</p>
+            </div>
+          </div>
+          <div class="info-card" style="margin-top:12px">
+            <h4>📐 每個醫檢 EPA 標準的「八項描述格式」</h4>
+            <p>① 標題　｜　② 任務描述（OPA：依<b>檢驗前／檢驗中／檢驗後</b>分組）　｜　③ 執行不當的風險　｜　④ 對應六大核心能力<br>
+            ⑤ 先備知識(K)・技能(S)・態度(A)・經驗　｜　⑥ 評估進展所需資訊　｜　⑦ 獨立操作時機（信賴等級）　｜　⑧ 信賴等級維持期限</p>
+          </div>
+          <div class="callout ok">💡 <b>公版架構的幫助：</b>學會公版已有明確格式與「用詞原則」（<b>每項 OPA 需有動詞、避免模糊字眼與形容詞</b>），有助於提供較明確的規則讓 AI 依格式輔助起草。</div>
+        `
+      }
+    ]
+  },
+
+  {
+    id: 1,
+    code: "02",
+    sub: "AI HUB",
+    dockLabel: "02｜PDCA × AI 工具心法",
+    eyebrow: "AI ENABLEMENT · PDCA 循環核心 × 使用 AI 五步驟心法 × 工具地圖",
+    title: "學會使用 AI 工具五步驟 × 臨床教學 AI 工具箱",
+    quote: "「好的結果 = 明確目標 + 清楚 Prompt（角色・背景・任務・格式）+ 教師持續檢視與修正。」",
+    color: "#1A8A7D",
+    soft: "#E4F5F2",
+    zoom: { x: 0, y: 8, scale: 1.35 },
+    pills: ["AI 使用五步驟", "Prompt 四要素", "6 大主力與延伸 AI 工具", "Chrome 問問 Gemini"],
+    items: [
+      {
+        title: "① 使用 AI 的五個步驟 & 好 Prompt 四要素",
+        tag: "AI 使用心法",
+        open: false,
+        html: `
+          <div class="flow-steps">
+            <div class="flow-step"><span class="fn">1</span><strong>明確目標</strong><p>定義教學需求、想解決的問題與成果目標</p></div>
+            <div class="flow-step"><span class="fn">2</span><strong>輸入指令</strong><p>說清楚需求、提供背景文件、指定輸出格式</p></div>
+            <div class="flow-step"><span class="fn">3</span><strong>AI 生成</strong><p>快速產出文字、表格、測驗、HTML 互動教材</p></div>
+            <div class="flow-step"><span class="fn">4</span><strong>檢視與調整</strong><p>查核專業正確性、修正細節、持續優化 Prompt</p></div>
+            <div class="flow-step"><span class="fn">5</span><strong>應用與輸出</strong><p>落地於臨床教學設計、表單文件與團隊共享</p></div>
+          </div>
+          <div class="grid-2">
+            <div class="info-card">
+              <h4>🔑 好的 Prompt 必備四要素</h4>
+              <ul>
+                <li><b>角色 (Role)</b>：你是擅長 CBME 的醫檢教學助理</li>
+                <li><b>背景 (Context)</b>：科別、PGY 學員層級、上傳之《醫檢師 EPAs》附件</li>
+                <li><b>任務 (Task)</b>：要改寫 OPA、出題、還是分析落差</li>
+                <li><b>格式 (Format)</b>：表格呈現、含動詞、避開模糊詞、10 分鐘考站</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h4>⚡ 提示詞對照（差 vs. 好）</h4>
+              <p><span class="meta-pill" style="background:#FDE5E5;color:#B91C1C">✘ 差</span> 「幫我寫採血 EPA」</p>
+              <p style="margin-top:8px"><span class="meta-pill" style="background:#E5F5EC;color:#1F8A4C">✔ 好</span> 「你是醫檢教學助理。依附件《醫檢師 EPAs》格式，為本院『採血作業』改寫 OPA（檢驗前／中／後），每項須含動詞，避免『熟知、適當』等模糊字眼，以表格呈現。」</p>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "② 可使用的 AI 工具地圖（對應 CBME 六步驟）",
+        tag: "工具總覽",
+        open: false,
+        html: `
+          <div class="grid-3">
+            <div class="info-card" style="border-top:4px solid var(--plan)">
+              <h4>✦ Gemini + Skills</h4>
+              <p>客製化 AI 技能（原 Gem），支援 RAG 載入學會公版與院內 SOP。<br><span class="meta-pill" style="margin-top:6px">用於：步驟 1–3、步驟 5</span></p>
+            </div>
+            <div class="info-card" style="border-top:4px solid var(--plan)">
+              <h4>📓 Gemini Notebook</h4>
+              <p>（原 NotebookLM）只依上傳文件整理、問答、附出處引用、生成測驗與語音概覽。<br><span class="meta-pill" style="margin-top:6px">用於：步驟 1–4</span></p>
+            </div>
+            <div class="info-card" style="border-top:4px solid var(--do)">
+              <h4>🟢 Edcafe</h4>
+              <p>整合教材與互動功能，可設定 <code>Files only</code> 讓系統以上傳之教材作為主要回答範圍。<br><span class="meta-pill" style="margin-top:6px">用於：步驟 4</span></p>
+            </div>
+            <div class="info-card" style="border-top:4px solid var(--check)">
+              <h4>📊 Copilot Agent</h4>
+              <p>可讀取去識別化 Excel 評量資料，輔助統計、繪製基本圖表、整理 CCC 摘要與 APE/ILP 草稿。<br><span class="meta-pill" style="margin-top:6px">用於：步驟 5–6</span></p>
+            </div>
+            <div class="info-card">
+              <h4>🎬 OVideo（延伸）</h4>
+              <p>AI 影片製作工具，將教案快速轉換為標準操作教學短片。</p>
+            </div>
+            <div class="info-card">
+              <h4>🥽 Virti / HTC 虛擬人（延伸）</h4>
+              <p>沉浸式 VR 模擬與虛擬病人／學員溝通訓練，安全練習高風險情境。</p>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "③ Chrome 問問 Gemini（瀏覽器內建側欄）：日常閱讀與備課輔助功能",
+        tag: "瀏覽器側欄功能",
+        open: false,
+        html: `
+          <div class="flow-steps">
+            <div class="flow-step"><span class="fn">1</span><strong>開啟 Chrome</strong><p>打開要閱讀的網頁、PDF 或線上文件</p></div>
+            <div class="flow-step"><span class="fn">2</span><strong>點選「問問 Gemini」</strong><p>點擊瀏覽器右上角 ✦ 圖示開啟側欄</p></div>
+            <div class="flow-step"><span class="fn">3</span><strong>輸入自然語言指令</strong><p>針對當前頁面或多個已開分頁提問</p></div>
+            <div class="flow-step"><span class="fn">4</span><strong>輔助整理與摘要</strong><p>快速產出重點摘要、翻譯或對照表格</p></div>
+          </div>
+          <div class="grid-3">
+            <div class="info-card">
+              <h4>📑 免複製貼上、邊讀邊問</h4>
+              <p>直接讀取當前開啟的網頁或 PDF 畫面，省去在不同視窗間來回切換與複製貼上的步驟。</p>
+            </div>
+            <div class="info-card">
+              <h4>🗂 跨分頁同時參照</h4>
+              <p>支援同時選取並讀取最多 <b>10 個已開啟分頁</b>，方便將多份規範、指引或文獻放在一起對照整理。</p>
+            </div>
+            <div class="info-card">
+              <h4>🔗 常見臨床備課情境</h4>
+              <p>適合用於外文文獻重點摘要、學會指引與院內文件條文比對、以及初步整理教學大綱表格。</p>
+            </div>
+          </div>
+        `
+      }
+    ]
+  },
+
+  {
+    id: 2,
+    code: "步驟 1–3",
+    sub: "PLAN",
+    dockLabel: "步驟 1–3｜Plan（EPAs 初稿）",
+    eyebrow: "P (PLAN) · EPAs 建構與課程數位化（界定能力 → 定義能力 → 設定里程碑）",
+    title: "步驟 1–3：以 RAG 錨定學會公版，AI 協助起草 EPAs 與里程碑",
+    quote: "「學會文件 → RAG 知識庫 → AI 技能拆解 K/S/A 與信賴等級 → 產出初稿 → 資深臨床教師審核定稿。」",
+    color: "#1F8A4C",
+    soft: "#E5F5EC",
+    zoom: { x: 22, y: -8, scale: 1.35 },
+    pills: ["Gemini Skill", "RAG 知識庫錨定", "PDCA · Plan 規劃階段", "1 個實務示範"],
+    items: [
+      {
+        title: "① 步驟 1–3 核心邏輯：為什麼要搭配參考文件（RAG）？",
+        tag: "Plan 架構",
+        open: false,
+        html: `
+          <div class="grid-3">
+            <div class="info-card"><h4>步驟 1｜界定能力</h4><p>載入學會既有能力架構 → 自動彙整各組 EPAs 任務清單，對應本院臨床檢驗需求。</p></div>
+            <div class="info-card"><h4>步驟 2｜定義能力</h4><p>依公版八項格式拆解 EPAs → <b>知識(K)、技能(S)、態度(A)</b>，產出<b>含動詞、可觀察</b>的 OPA 行為描述初稿。</p></div>
+            <div class="info-card"><h4>步驟 3｜設定里程碑</h4><p>醫檢版以 <b>Level 1–5 信賴等級</b>呈現（Level 4＝可獨立執行），描述各級具體表現特徵。</p></div>
+          </div>
+          <div class="callout ok">📌 <b>為什麼搭配參考文件（RAG）？</b> 將《醫檢師 EPAs 第一版》、六大核心能力與院內 SOP 作為參考來源，有助於讓 AI 優先依據既有文件整理，減少自行延伸或偏離規範的情況。</div>
+        `
+      },
+      {
+        title: "② 【示範 1】Gemini Skill：「EPA 建構助手」（以 EPA5 自動化生化為例）",
+        tag: "實務示範 1｜Gemini Skill",
+        open: false,
+        html: `
+          <div class="flow-steps">
+            <div class="flow-step"><span class="fn">1</span><strong>登入與管理</strong><p>gemini.google.com → 左側「管理技能 (Skills)」</p></div>
+            <div class="flow-step"><span class="fn">2</span><strong>建立 Skill</strong><p>命名「EPA 建構助手」，設定專家角色</p></div>
+            <div class="flow-step"><span class="fn">3</span><strong>載入知識庫</strong><p>上傳《醫檢師 EPAs 第一版》與院內 SOP</p></div>
+            <div class="flow-step"><span class="fn">4</span><strong>設定拆解指令</strong><p>依八項格式拆解 K/S/A 與信賴等級</p></div>
+            <div class="flow-step"><span class="fn">5</span><strong>對話中呼叫</strong><p>輸入 <code>@EPA 建構助手</code> 下達任務</p></div>
+            <div class="flow-step"><span class="fn">6</span><strong>審核與共享</strong><p>教師審核修改後，再分享給教學團隊</p></div>
+          </div>
+          <div class="prompt-box">
+            <div class="p-head"><span>Skill 角色與任務指令（可直接複製貼入 Gemini Skill）</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+            <pre>你是擅長 CBME 的醫檢教學專家，只依知識庫《醫檢師 EPAs 第一版》回答。
+任務：依八項描述格式，協助醫院改寫或草擬 EPA。
+規則：每個 OPA 必須有動詞；避免「熟知、適當、正確與否」等模糊字眼與形容詞；依檢驗前／中／後分 A、B、C；信賴等級用 Level 1–5。
+知識庫沒有依據時，寫「文件未涵蓋」，不要編造。</pre>
+          </div>
+          <div class="chat-sim">
+            <div class="chat-cap">💬 Gemini 對話示範（自動化生化檢驗分析作業 OPA2(5)）</div>
+            <div class="chat-bubble user">@EPA 建構助手 請依公版，將「自動化生化檢驗分析作業」OPA2(5) 拆成 K/S/A，並對應信賴等級</div>
+            <div class="chat-bubble ai">
+              <b>OPA2(5)：</b>審視品管結果及品管不合格時之矯正處理<br>
+              • <b>知識 (K)：</b>實驗室檢驗品管及品質系統、品管與校正時機<br>
+              • <b>技能 (S)：</b>審視品管結果及異常處理<br>
+              • <b>態度 (A)：</b>以公正及嚴謹的心維護檢驗品質 <small>（以上摘自公版原文）</small>
+              <b>信賴等級（公版定義）：</b>L2 教師直接指導、需要時介入 ｜ L3 教師間接指導、僅需事後確認 ｜ <b>L4 可獨立執行任務</b>
+              <small>⚠ AI 只整理公版原文；各級在院內機台的具體操作行為由生化組臨床教師補充與審核。</small>
+            </div>
+          </div>
+        `
+      }
+    ]
+  },
+
+  {
+    id: 3,
+    code: "步驟 4",
+    sub: "DO",
+    dockLabel: "步驟 4｜Do（互動教材與助教）",
+    eyebrow: "D (DO) · 設計學習活動：AI 互動式學習網站 + Chatbot 助教 + 翻轉教學",
+    title: "步驟 4：運用 NotebookLM、Chatbot 助教與互動式學習網頁輔助翻轉教學",
+    quote: "「重點不在『有沒有用 AI』，而在『怎麼設計互動』——結合反思提問、過程回饋、來源透明與教師支持。」",
+    color: "#6A49C8",
+    soft: "#EFEAFA",
+    zoom: { x: -10, y: -8, scale: 1.35 },
+    pills: ["Gemini Notebook (NotebookLM)", "Edcafe Chatbot (Files only)", "Gemini 互動式 HTML 網頁", "PDCA · Do 執行階段", "3 個實務示範"],
+    items: [
+      {
+        title: "① 醫學教育實證怎麼說？翻轉教學 × 三方互動設計",
+        tag: "教學理論與實證",
+        open: false,
+        html: `
+          <div class="grid-3">
+            <div class="info-card">
+              <h4>🤖 Chatbot 助教（Wu et al., 2025）</h4>
+              <p>不應只當「快速給答案」的工具，應融入<b>教師、同儕、Chatbot 三方互動</b>，促進共同調節學習與深層反思。</p>
+            </div>
+            <div class="info-card">
+              <h4>🧭 自主學習（Aulakh et al., 2025）</h4>
+              <p>結構化自主學習成效優於傳統單向講授，但仍需<b>明確學習目標、即時回饋與教師支持</b>。</p>
+            </div>
+            <div class="info-card">
+              <h4>💻 互動教材（Cook et al., 2010）</h4>
+              <p>互動式數位教材優於靜態教材，關鍵在於<b>操作互動設計、立即回饋與進度追蹤</b>。</p>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="callout warn"><b>✘ 風險設計：</b>學員只拿 AI 快速抄答案 → 導致表層學習、過度依賴 AI。</div>
+            <div class="callout ok"><b>✔ 有效設計：</b>課前用 NotebookLM／Chatbot／互動網頁預習 → 實體課改做異常討論與實作練習！</div>
+          </div>
+        `
+      },
+      {
+        title: "② 【示範 2】Gemini Notebook（原 NotebookLM）：把公版文件變成教學助手（以 EPA2 血庫為例）",
+        tag: "實務示範 2｜NotebookLM",
+        open: false,
+        html: `
+          <div class="flow-steps">
+            <div class="flow-step"><span class="fn">1</span><strong>前往網站</strong><p>notebook.google.com 登入</p></div>
+            <div class="flow-step"><span class="fn">2</span><strong>建立筆記本</strong><p>每個教學專案獨立空間</p></div>
+            <div class="flow-step"><span class="fn">3</span><strong>上傳來源</strong><p>上傳《醫檢師EPA.pdf》與院內 SOP</p></div>
+            <div class="flow-step"><span class="fn">4</span><strong>理解與整理</strong><p>自動摘要重點與段落關聯</p></div>
+            <div class="flow-step"><span class="fn">5</span><strong>與 AI 對話</strong><p>每個回答皆附原文引用出處</p></div>
+            <div class="flow-step"><span class="fn">6</span><strong>生成多媒體</strong><p>輔助產出測驗、學習指南、語音概覽</p></div>
+          </div>
+          <div class="prompt-box">
+            <div class="p-head"><span>NotebookLM 出題提示詞範例</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+            <pre>請依《醫檢師 EPAs》EPA2 血庫備血作業的「先備知識」，產生 10 題情境式選擇題，每題附正確答案與出處頁碼，難度適合 PGY 學員。</pre>
+          </div>
+          <div class="chat-sim">
+            <div class="chat-cap">📓 Notebook 對話示範（內容摘自《醫檢師EPA.pdf》）</div>
+            <div class="chat-bubble user">血庫備血作業執行不當，可能有哪些風險？</div>
+            <div class="chat-bubble ai">
+              ① <b>血型不符</b>（檢驗錯誤、核發錯誤）將造成醫療糾紛與輸血錯誤。<br>
+              ② <b>抗體篩檢偽陰性錯誤</b>造成血品延誤出庫。
+              <small>〔引用來源：EPA2 第 3 項「任務執行不當時可能造成的風險」〕✔ 每個答案都附引用標記，可點擊直接跳回 PDF 原文查證！</small>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "③ 【示範 3】Edcafe：6 步驟建立專屬 Chatbot 助教（Files only 最重要！）",
+        tag: "實務示範 3｜Edcafe Chatbot",
+        open: false,
+        html: `
+          <div class="flow-steps">
+            <div class="flow-step"><span class="fn">1</span><strong>建立 Chatbot</strong><p>登入 Edcafe → Create New → Chatbot</p></div>
+            <div class="flow-step"><span class="fn">2</span><strong>描述任務</strong><p>設定角色與對象，系統自動優化 Prompt</p></div>
+            <div class="flow-step"><span class="fn">3</span><strong>建立知識庫</strong><p>上傳公版 EPA1 與院內採血 SOP</p></div>
+            <div class="flow-step"><span class="fn">4</span><strong>Knowledge Mode</strong><p>必選 <b>Files only</b>（只依教材回答）</p></div>
+            <div class="flow-step"><span class="fn">5</span><strong>開啟互動功能</strong><p>語音、傳檔、文字編輯、白板</p></div>
+            <div class="flow-step"><span class="fn">6</span><strong>測試與分享</strong><p>QR Code 或嵌入 Google Sites</p></div>
+          </div>
+          <div class="prompt-box">
+            <div class="p-head"><span>Edcafe Chatbot 任務描述指令（採血作業助教）</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+            <pre>你是醫檢採血作業的教學助教，只根據知識庫教材回答 PGY 學員的問題，並標註引用之 EPA / OPA 段落；若教材沒有涵蓋該問題，請誠實回答「教材未涵蓋，請詢問帶教老師或查閱院內感控規範」，絕對不可自行編造。</pre>
+          </div>
+          <div class="chat-sim">
+            <div class="chat-cap">🟢 Edcafe Chatbot 對話示範（Knowledge Mode: Files only）</div>
+            <div class="chat-bubble user">抽血失敗時我該怎麼做？</div>
+            <div class="chat-bubble ai">與病人溝通，適時反應問題並尋求資深醫檢師的幫助。〔出處：EPA1 OPA2(8)〕</div>
+            <div class="chat-bubble user">特殊檢體有哪些要特別處置？</div>
+            <div class="chat-bubble ai">冰溫浴、避光、備血等特殊採檢需求須依規範處置。〔出處：EPA1 OPA3(2)〕</div>
+            <div class="chat-bubble user">如果不小心被針扎後，要做哪些抽血檢驗和追蹤幾個月？</div>
+            <div class="chat-bubble ai"><b>教材未涵蓋具體檢驗項目與追蹤期程</b>，公版僅提及「依照規範處理針扎事件〔OPA3(5)〕」。請立即通報並詢問帶教老師或查閱本院針扎感控流程。<small>↑ 設定 Files only 可減少 AI 自行延伸未確認資訊的情況，但上線前仍需由教師測試確認。</small></div>
+          </div>
+        `
+      },
+      {
+        title: "④ 【示範 4】用 Gemini 製作互動式學習網頁（HTML）＋ 現場體驗互動測驗",
+        tag: "實務示範 4｜Gemini 互動網頁",
+        open: false,
+        html: `
+          <div class="flow-steps">
+            <div class="flow-step"><span class="fn">1</span><strong>準備教材</strong><p>公版 EPA1、SOP、情境題庫</p></div>
+            <div class="flow-step"><span class="fn">2</span><strong>開啟 Gemini</strong><p>選用 Pro 模型或開啟 Canvas</p></div>
+            <div class="flow-step"><span class="fn">3</span><strong>輸入 Prompt</strong><p>指定單一 HTML 與互動回饋功能</p></div>
+            <div class="flow-step"><span class="fn">4</span><strong>預覽與修正</strong><p>直接點擊測試作答並微調版面</p></div>
+            <div class="flow-step"><span class="fn">5</span><strong>下載與發佈</strong><p>存成 .html 或嵌入 Google Sites</p></div>
+          </div>
+          <div class="prompt-box">
+            <div class="p-head"><span>Gemini 製作互動式學習網頁 Prompt（EPA1 採血作業）</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+            <pre>請依附件《醫檢師 EPAs》EPA1 採血作業，設計一個互動式學習網頁（單一 HTML 檔案）：
+1. 門診採血情境導入
+2. OPA1（採血前）/ OPA2（採血中）/ OPA3（採血後）重點整理（可點擊展開／收合）
+3. 3 題臨床情境選擇題（作答後立即顯示正確答案與 OPA 出處解析）
+4. 作答成績統計與複習建議
+請以繁體中文、響應式版面（手機平板皆可用）、清爽藍綠色系呈現。</pre>
+          </div>
+          <div class="quiz-box">
+            <h4 style="color:var(--do)">🎮 成品現場體驗（可直接點選作答）：</h4>
+            <p style="margin-top:6px;font-weight:700">【情境題】門診病人完成抽血拔針後，突然臉色蒼白表示頭暈（暈針），請問「受檢者緊急狀況處理（血腫、暈針等）」屬於 EPA1 採血作業的哪一個可觀察實務活動（OPA）？</p>
+            <button class="quiz-opt" onclick="checkQuiz(this, false)">A. OPA 1｜採血前準備作業</button>
+            <button class="quiz-opt" onclick="checkQuiz(this, false)">B. OPA 2｜採血中作業</button>
+            <button class="quiz-opt" onclick="checkQuiz(this, true)">C. OPA 3｜採血後處置（OPA3 第 4 項）</button>
+            <div id="quizFeedbackMsg" style="margin-top:8px;font-weight:800;font-size:15px;"></div>
+          </div>
+        `
+      }
+    ]
+  },
+
+  {
+    id: 4,
+    code: "步驟 5",
+    sub: "CHECK",
+    dockLabel: "步驟 5｜Check（評量與 CCC/ILP）",
+    eyebrow: "C (CHECK) · 安排評量方法（學員層級）：學習護照 AI 分析 + 評量表初稿",
+    title: "步驟 5：AI 整合學習證據支持 CCC 決策與 ILP × OSCE 考站轉譯",
+    quote: "「聚焦學員個人層級：AI 幫老師把分散在電子護照的數據與回饋整理成洞察報告，但最終授權判定永遠是 CCC 的專業決定。」",
+    color: "#B8741A",
+    soft: "#FDF1E1",
+    zoom: { x: -14, y: -6, scale: 1.35 },
+    pills: ["示範 5：Copilot 資料分析", "示範 6：OSCE 教案 Skill", "PDCA · Check 檢核階段", "學員層級（CCC & ILP）"],
+    items: [
+      {
+        title: "① 步驟 5 雙軌工作流：5-1 CCC 決策前摘要 & 5-2 CCC 決策後 ILP 追蹤",
+        tag: "學員層級工作流",
+        open: false,
+        html: `
+          <div class="grid-2">
+            <div class="info-card">
+              <h4>📊 5-1｜CCC 決策前：多元學習證據整合</h4>
+              <ul>
+                <li><b>① 蒐集證據：</b>電子護照匯入 EPA 評量、Mini-CEX/DOPS、OSCE、360/教師回饋、工作量例數</li>
+                <li><b>② AI 洞察分析：</b>對應 EPA 與里程碑、分析達成度、辨識強項與弱項落差、風險預警</li>
+                <li><b>③ 支持 CCC 審議：</b>生成學員能力總覽與會議紀錄初稿</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h4>🎯 5-2｜CCC 決策後：個人化學習計畫 (ILP) 生成</h4>
+              <ul>
+                <li><b>④ ILP 生成：</b>依能力落差設定具體目標、建議補強活動、EPA 臨床練習、完成期限與檢核點</li>
+                <li><b>⑤ 執行與追蹤：</b>AI 持續追蹤進度並提醒階段檢核</li>
+                <li><b>⑥ 回饋下次 CCC：</b>比較補強前後表現，決定持續補強或提升授權（Level 4）</li>
+              </ul>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "② 【示範 5】Copilot Agent：去識別化評量資料分析 → 視覺化圖表 → CCC 摘要 → ILP 草案",
+        tag: "實務示範 5｜Copilot 資料分析與圖表",
+        open: false,
+        html: `
+          <div class="callout warn">⚠ <b>資安鐵則：</b>上傳 Excel / CSV 前，務必移除<b>姓名、身分證字號、病歷號與病人資料</b>，僅保留「學員代碼（如 A01、A02）」。</div>
+          <div class="grid-2">
+            <div class="info-card">
+              <h4>📋 虛構去識別化資料表（EPA1 採血作業）</h4>
+              <table class="clean-tbl">
+                <tr><th>學員代碼</th><th>OPA1 採血前</th><th>OPA2 採血中</th><th>OPA3 採血後</th><th>ad-hoc 次數<br><small>(公版≥4)</small></th><th>採血例數<br><small>(公版≥100)</small></th></tr>
+                <tr><td><b>A01</b></td><td>4</td><td>4</td><td>3</td><td>4</td><td>112</td></tr>
+                <tr><td><b>A02</b></td><td>3</td><td>3</td><td class="warn-cell">2</td><td class="warn-cell">3</td><td class="warn-cell">78</td></tr>
+                <tr><td><b>A03</b></td><td>4</td><td>3</td><td>3</td><td class="warn-cell">2</td><td class="warn-cell">45</td></tr>
+              </table>
+            </div>
+            <div class="info-card">
+              <h4>💡 臨床教師最常用的 6 個分析與圖表 Prompt</h4>
+              <ol>
+                <li>請找出平均信賴等級最低的 OPA 項目。</li>
+                <li>列出 ad-hoc 少於 4 次或採血例數少於 100 例的學員。</li>
+                <li>繪製各學員 OPA1–OPA3 信賴等級長條圖／雷達圖，並標示 Level 4 基準線。</li>
+                <li>將「臨床教師現場文字回饋」統整成 5 個常見主題。</li>
+                <li>繪製學員三個月內的信賴等級進步趨勢折線圖。</li>
+                <li>為未達標學員（如 A02）草擬 ILP：目標、補強活動、檢核點。</li>
+              </ol>
+            </div>
+          </div>
+          <div class="grid-2">
+            <div class="prompt-box" style="margin-top:0">
+              <div class="p-head"><span>Prompt 1｜評量資料轉為「視覺化圖表」（Copilot / Gemini）</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+              <pre>請根據上傳之去識別化《EPA1 採血作業評量表.xlsx》，將資料轉為可供 CCC 會議檢視的視覺化圖表（或單一 HTML 互動圖表）：
+1. 【群組長條圖】比較各學員（A01–A03）在 OPA1、OPA2、OPA3 的信賴等級，加上 Level 4（可獨立執行）紅色虛線基準線。
+2. 【橫向達標對照圖】呈現各學員「ad-hoc 觀察次數（門檻 ≥ 4 次）」與「累積採血例數（門檻 ≥ 100 例）」，未達標者以醒目橘紅色標示。
+3. 圖表下方自動附上 3 點簡要數據觀察摘要。</pre>
+            </div>
+            <div class="prompt-box" style="margin-top:0">
+              <div class="p-head"><span>Prompt 2｜弱項分析與個人化學習計畫（ILP）草擬</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+              <pre>請分析上傳之已去識別化《EPA1 採血作業評量表.xlsx》：
+1. 計算各 OPA 平均信賴等級，找出全體最弱項。
+2. 對照公版最低要求（ad-hoc ≥ 4 次、採血 ≥ 100 例），列出未達標學員清單。
+3. 針對學員 A02 草擬個人化學習計畫（ILP）：包含具體學習目標、建議補強活動、完成時間與檢核方式。</pre>
+            </div>
+          </div>
+          <div class="chat-sim">
+            <div class="chat-cap">📊 Copilot Agent 視覺化圖表、分析與 ILP 輸出示意</div>
+            <div class="chat-bubble ai">
+              • <b>全體弱項分析：</b>平均信賴等級最低為 <b>OPA3 採血後處置（平均 2.7）</b>。<br>
+              • <b>未達公版門檻預警：</b>學員 <b>A02、A03</b> 之 ad-hoc 觀察次數與累積採血例數皆未達公版建議標準。<br>
+              • <b>A02 個人化學習計畫（ILP 草案）：</b><br>
+              　1. <b>補強目標：</b>6 週內將 OPA3（暈針/血腫緊急處置與特殊檢體後處置）提升至 Level 3 以上。<br>
+              　2. <b>學習活動：</b>觀看採血異常處置教學影片、完成 2 次暈針／血腫情境模擬演練、補足採血至 100 例。<br>
+              　3. <b>追蹤檢核：</b>第 4 週與第 6 週各安排 1 次 ad-hoc 直接觀察（補足至 4 次），送交下次 CCC 複審。
+              <small>（此草案供 CCC 與導師參考；依公版規定最終須達 Level 4 方可授權獨立作業）</small>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "③ 【示範 6】Gemini Skill：「OSCE 暨 EPA 教案建構助手」（以 EPA2 血庫為例）",
+        tag: "實務示範 6｜OSCE 教案轉譯",
+        open: false,
+        html: `
+          <div class="flow-steps">
+            <div class="flow-step"><span class="fn">1</span><strong>建立 Skill</strong><p>設定為「OSCE 暨 EPA 教案建構助手」</p></div>
+            <div class="flow-step"><span class="fn">2</span><strong>雙重知識庫</strong><p>上傳院內 OSCE 考官規範 + 公版 EPA</p></div>
+            <div class="flow-step"><span class="fn">3</span><strong>設定轉譯指令</strong><p>強制將 OPA 與信賴等級轉為查核表</p></div>
+            <div class="flow-step"><span class="fn">4</span><strong>呼叫產出</strong><p>一鍵生成考生指示、考官劇本、評分表</p></div>
+          </div>
+          <div class="prompt-box">
+            <div class="p-head"><span>呼叫 OSCE 暨 EPA 教案建構助手 Prompt（血庫 ABO 血型不合）</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+            <pre>@OSCE 暨 EPA 教案建構助手
+請結合「EPA2 血庫備血作業」OPA2(3)「ABO discrepancy 或抗體陽性的處置」，設計一站 10 分鐘 OSCE 考站：包含考生指示、考官劇本、考官查核表（須直接對應公版 OPA 項目與信賴等級 Level 1–5）。</pre>
+          </div>
+          <div class="chat-sim">
+            <div class="chat-cap">💬 Gemini Skill 輸出示意（EPA2 → OSCE 10 分鐘考站骨架）</div>
+            <div class="chat-bubble ai">
+              <b>• 考站主題：</b>EPA2 血庫備血作業 — OPA2(3) ABO discrepancy 或抗體陽性的處置（10 分鐘）<br>
+              <b>• 考生任務與臨床情境：</b>［由血庫臨床教師填入本院去識別化案例數值］<br>
+              <b>• 考官查核表（取自公版 OPA2）：</b><br>
+              　□ 執行血型檢驗與結果判讀（正反定型不合辨識）<br>
+              　□ 執行 ABO discrepancy 或抗體陽性的標準處置流程<br>
+              　□ 血型、抗體篩檢異常事件的紀錄與處理<br>
+              　□ 無法判讀或遇危急用血時，能適時尋求資深同仁協助<br>
+              <b>• 整體信賴等級評定：</b>對應 Level 1–5
+              <small>（AI 先搭好符合公版規格的考站骨架，試管凝集價數與劇本細節由血庫資深教師審核補充）</small>
+            </div>
+          </div>
+        `
+      }
+    ]
+  },
+
+  {
+    id: 5,
+    code: "步驟 6",
+    sub: "ACT",
+    dockLabel: "步驟 6｜Act（PEC/APE 課程成效）",
+    eyebrow: "A (ACT) · 數據驅動教學優化（課程層級）：PEC 審議 → APE 年度報告 → PDCA 改善",
+    title: "步驟 6：課程層級成效評估 — 讓資料說話，驅動下一輪課程優化",
+    quote: "「步驟 5 看『個人（CCC/ILP）』；步驟 6 看『整體課程（PEC/APE）』——找出哪個 EPA 達成率偏低，回饋至步驟 1–4 持續改善。」",
+    color: "#1D5FD0",
+    soft: "#E7F0FD",
+    zoom: { x: 14, y: -6, scale: 1.35 },
+    pills: ["PDCA · Act 改善階段", "課程層級（PEC & APE）", "示範 7：Copilot Dashboard", "CQI / PDCA 持續品質改善"],
+    items: [
+      {
+        title: "① 步驟 6 課程層級工作流：6-1 PEC 會前分析 & 6-2 APE 年度報告與 PDCA",
+        tag: "課程層級工作流",
+        open: false,
+        html: `
+          <div class="grid-2">
+            <div class="info-card">
+              <h4>📈 6-1｜PEC 會前分析（整合多源課程數據）</h4>
+              <ul>
+                <li><b>蒐集資料：</b>全體學員 EPA 達 Level 4 比例、OSCE/DOPS 表現、CCC 決策彙整、學員滿意度、Chatbot/互動網站使用數據、臨床品質指標。</li>
+                <li><b>AI 趨勢洞察：</b>跨梯次/年資比較、辨識達成率低於 70% 的瓶頸 EPA、評量信效度監測、問題根因推測（學員、教材或制度）。</li>
+              </ul>
+            </div>
+            <div class="info-card">
+              <h4>🔄 6-2｜APE 年度訓練計畫評估報告 &amp; PDCA 循環</h4>
+              <ul>
+                <li><b>PEC 會議決議：</b>確認改善優先順序、指定責任組別與追蹤指標。</li>
+                <li><b>AI 協作 APE 初稿：</b>自動彙整成效摘要、問題分析、改善行動方案與圖表附件。</li>
+                <li><b>啟動 PDCA：</b>回饋至<b>步驟 1–4</b>（微調 EPA 描述、補強互動教材、優化評量頻率）。</li>
+              </ul>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "② 【示範 7】Copilot：課程層級 HTML Dashboard 與 APE 年度評估報告初稿",
+        tag: "實務示範 7｜PEC Dashboard",
+        open: false,
+        html: `
+          <div class="grid-2">
+            <div class="info-card">
+              <h4>📊 全體學員達 Level 4（可獨立執行）比例（虛構示意）</h4>
+              <svg viewBox="0 0 420 185" width="100%" style="margin-top:8px">
+                <g font-size="13.5" font-weight="700" fill="#2C221E">
+                  <text x="4" y="34">EPA1 採血作業</text>
+                  <rect x="148" y="16" width="205" height="24" rx="6" fill="#1D5FD0"/>
+                  <text x="360" y="34" fill="#1D5FD0">90%</text>
+
+                  <text x="4" y="72">EPA2 血庫備血</text>
+                  <rect x="148" y="54" width="180" height="24" rx="6" fill="#1D5FD0"/>
+                  <text x="335" y="72" fill="#1D5FD0">79%</text>
+
+                  <text x="4" y="110">EPA5 自動化生化</text>
+                  <rect x="148" y="92" width="140" height="24" rx="6" fill="#E06D44"/>
+                  <text x="295" y="110" fill="#E06D44">62% ⚠</text>
+
+                  <text x="4" y="148">評量次數達標率</text>
+                  <rect x="148" y="130" width="164" height="24" rx="6" fill="#1A8A7D"/>
+                  <text x="320" y="148" fill="#1A8A7D">72%</text>
+                </g>
+                <line x1="307" y1="8" x2="307" y2="160" stroke="#E06D44" stroke-dasharray="4 4" stroke-width="1.5"/>
+                <text x="148" y="176" font-size="12.5" font-weight="800" fill="#E06D44">▲ 橘色標記：達標率低於 70% 門檻，自動列入 PEC 優先改善議題</text>
+              </svg>
+            </div>
+            <div class="info-card">
+              <h4>📝 Copilot 生成之 APE 年度評估報告初稿</h4>
+              <p><b>1. 成效摘要：</b>本年度三項核心 EPA 中，EPA1（90%）與 EPA2（79%）達成率穩定；<b>EPA5 自動化生化達 Level 4 比例最低（62%）</b>。</p>
+              <p style="margin-top:6px"><b>2. 問題根因討論（供 PEC 審議）：</b>生化組夜間/假日異常品管案例較少，且 ad-hoc 直接觀察次數偏低。</p>
+              <p style="margin-top:6px"><b>3. PDCA 改善行動方案：</b><br>
+              • <b>回步驟 4（Do）：</b>新增生化品管異常（OPA2-5）互動網頁案例題與 Chatbot 腳本。<br>
+              • <b>回步驟 5（Check）：</b>將品管異常矯正納入期末小站評量，並追蹤下年度 Level 4 達成率是否突破 80%。</p>
+            </div>
+          </div>
+          <div class="prompt-box">
+            <div class="p-head"><span>課程層級 Dashboard 與 APE 初稿生成 Prompt</span><button class="copy-btn" onclick="copyText(this)">複製指令</button></div>
+            <pre>請彙整全體 PGY 學員在 EPA1、EPA2、EPA5 達到信賴等級 Level 4 的比例，依年資與組別進行比較，自動標示達成率低於 70% 的項目，產出互動式 HTML Dashboard；並依 PEC 決議格式撰寫 APE 年度評估報告初稿（含成效摘要、問題分析、PDCA 改善計畫與下年度追蹤指標）。</pre>
+          </div>
+        `
+      }
+    ]
+  },
+
+  {
+    id: 6,
+    code: "07",
+    sub: "ECOSYSTEM",
+    dockLabel: "07｜電子護照與三不原則",
+    eyebrow: "PLATFORM & GOVERNANCE · 數位平台生態系 × 優勢挑戰 × 三不原則",
+    title: "教師端 ↔ 電子護照 ↔ 學生端 整合生態與 AI 導入「三不原則」",
+    quote: "「不輸入可辨識個資、不直接採用未審核輸出、不讓 AI 取代最終專業判定。」",
+    color: "#0F2A52",
+    soft: "#E6ECF5",
+    zoom: { x: 0, y: -12, scale: 1.32 },
+    pills: ["智慧教學生態系", "SharePoint 教師端", "e-Portfolio 電子護照", "數位學習平台", "三不原則"],
+    items: [
+      {
+        title: "① 智慧教學生態系：教師端 × 電子護照 × 學生端 如何串聯？",
+        tag: "大綱中軸架構",
+        open: false,
+        html: `
+          <div class="grid-3">
+            <div class="info-card" style="border-top:4px solid var(--plan)">
+              <h4>👩‍🏫 教師端（SharePoint 平台）</h4>
+              <p>集中管理與共備：院內版 EPAs、里程碑規準、OSCE 教案、評量表單、CCC 與 PEC 會議文件。</p>
+            </div>
+            <div class="info-card" style="border-top:4px solid var(--act)">
+              <h4>🛡 電子護照（e-Portfolio 核心樞紐）</h4>
+              <p>雙向整合學習歷程與評量數據（ad-hoc、mini-CEX、案例數、360 回饋），提供標準化去識別資料供 AI 分析。</p>
+            </div>
+            <div class="info-card" style="border-top:4px solid var(--do)">
+              <h4>🧑‍🎓 學生端（數位學習平台）</h4>
+              <p>PGY 與實習學員隨時存取：Gemini 互動式學習網頁、Edcafe Chatbot 助教、以及個人專屬 ILP 補強進度。</p>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "② 導入生成式 AI 於 CBME 的優勢、挑戰與「三不原則」",
+        tag: "風險控管與結語",
+        open: false,
+        html: `
+          <div class="grid-2">
+            <div class="info-card" style="border-color:var(--plan)">
+              <h4 style="color:var(--plan)">✔ 潛在輔助效益</h4>
+              <ul>
+                <li>協助縮短 EPAs 與 OSCE 教案初期的文字起草時間</li>
+                <li>以學會公版為參考基礎，減少偏離專業脈絡的情況</li>
+                <li>提供課前預習與基礎問答支持，輔助課堂外自主學習</li>
+                <li>協助整理電子護照資料，作為 CCC 會議討論的參考依據</li>
+                <li>輔助繪製基本統計圖表與初稿整理，支持 PEC 與 PDCA 討論</li>
+              </ul>
+            </div>
+            <div class="info-card" style="border-color:#D9534F">
+              <h4 style="color:#B91C1C">⚠ 五大實務挑戰</h4>
+              <ul>
+                <li>AI 產出之初稿<b>必須經過資深臨床教師審核</b>才能定稿</li>
+                <li>Chatbot 回應品質需定期抽查校正（確認 <code>Files only</code>）</li>
+                <li>電子護照與評量資料欄位格式需先標準化</li>
+                <li>臨床教師需具備基本的 Prompt 與 AI 判讀素養</li>
+                <li>學員與病人的資料隱私與資安必須嚴格符合機構規範</li>
+              </ul>
+            </div>
+          </div>
+          <div class="callout warn" style="font-size:16.5px;text-align:center;padding:14px">
+            🛑 <b>臨床教師 AI 實務三不原則：</b><br>
+            ① <b>不輸入</b>可辨識的學員或病人個資　｜　② <b>不直接採用</b>未經教師審核的 AI 輸出　｜　③ <b>不讓 AI 取代</b> CCC / PEC 的最終專業判定
+          </div>
+          <div class="callout ok" style="font-size:16px;text-align:center">
+            🚀 <b>明天就能開始的一小步：</b>從大綱中選一個步驟、複製一個提示詞，換成你的檢驗組別試做一次！
+          </div>
+        `
+      }
+    ]
+  }
+];
+
+/* Ready-to-copy Prompt Library */
+const PROMPT_LIBRARY = [
+  {
+    step: "步驟 1–3｜Plan",
+    title: "Gemini Skill「EPA 建構助手」系統指令",
+    text: `你是擅長 CBME 的醫檢教學專家，只依知識庫《醫檢師 EPAs 第一版》回答。\n任務：依八項描述格式，協助醫院改寫或草擬 EPA。\n規則：每個 OPA 必須有動詞；避免「熟知、適當、正確與否」等模糊字眼與形容詞；依檢驗前／中／後分 A、B、C；信賴等級用 Level 1–5。\n知識庫沒有依據時，寫「文件未涵蓋」，不要編造。`
+  },
+  {
+    step: "步驟 1–3｜Plan",
+    title: "EPA 改寫與拆解 K/S/A（以自動化生化為例）",
+    text: `依附件《醫檢師 EPAs》格式，將「自動化生化檢驗分析作業」改寫為本院版：OPA 依檢驗前／中／後分組，每項須含動詞，避免模糊字眼，並列出對應之知識(K)、技能(S)、態度(A)與信賴等級 Level 1–5。`
+  },
+  {
+    step: "步驟 4｜Do",
+    title: "NotebookLM 情境選擇題出題（以血庫備血為例）",
+    text: `請依《醫檢師 EPAs》EPA2 血庫備血作業的「先備知識」，產生 10 題情境式選擇題，每題附正確答案與出處頁碼，難度適合 PGY 學員。`
+  },
+  {
+    step: "步驟 4｜Do",
+    title: "Edcafe Chatbot 助教角色設定（Files only）",
+    text: `你是醫檢採血作業的教學助教，只根據知識庫教材回答 PGY 學員的問題，並標註引用之 EPA / OPA 段落；若教材沒有涵蓋該問題，請誠實回答「教材未涵蓋，請詢問帶教老師或查閱院內規範」，不可自行編造。`
+  },
+  {
+    step: "步驟 4｜Do",
+    title: "Gemini 製作單一檔案 HTML 互動學習網頁（以採血為例）",
+    text: `請依附件《醫檢師 EPAs》EPA1 採血作業，設計互動式學習網頁（單一 HTML）：\n1. 門診採血情境導入\n2. OPA1 / OPA2 / OPA3 重點（可點擊展開／收合）\n3. 情境題（作答後立即回饋並標註 OPA）\n4. 成績統計\n請以繁體中文、響應式設計、清爽藍綠色系呈現。`
+  },
+  {
+    step: "步驟 5｜Check",
+    title: "將去識別化評量資料轉為「視覺化圖表」（Copilot / Gemini）",
+    text: `請根據上傳之去識別化《EPA1 採血作業評量表.xlsx》，將資料轉為可供 CCC 會議檢視的視覺化圖表（或單一 HTML 互動圖表）：\n1. 【群組長條圖】比較各學員（A01–A03）在 OPA1、OPA2、OPA3 的信賴等級，加上 Level 4（可獨立執行）紅色虛線基準線。\n2. 【橫向達標對照圖】呈現各學員「ad-hoc 觀察次數（門檻 ≥ 4 次）」與「累積採血例數（門檻 ≥ 100 例）」，未達標者以醒目橘紅色標示。\n3. 圖表下方自動附上 3 點簡要數據觀察摘要。`
+  },
+  {
+    step: "步驟 5｜Check",
+    title: "OSCE 暨 EPA 教案建構助手（以血庫 ABO 血型不合為例）",
+    text: `@OSCE 暨 EPA 教案建構助手\n請結合「EPA2 血庫備血作業」OPA2(3)「ABO discrepancy 或抗體陽性的處置」，設計一站 10 分鐘 OSCE：包含考生指示、考官劇本、查核表，需直接對應公版 OPA 與信賴等級 Level 1–5。`
+  },
+  {
+    step: "步驟 5–6｜Check & Act",
+    title: "Copilot 去識別化評量分析、ILP 與 APE 年度報告草擬",
+    text: `請分析附件（已去識別化評量表）：\n1. 找出平均信賴等級最低的 OPA 項目，並列出 ad-hoc 次數或案例數未達公版門檻的學員。\n2. 為未達標學員草擬個人化學習計畫（ILP：目標、補強活動、檢核點）。\n3. 彙整全體學員各 EPA 達 Level 4 比例，標示低於 70% 的項目，產出視覺化圖表與 APE 年度評估改善草案。`
+  }
+];
+
+/* ============================================================================
+   INTERACTIVE STATE & CAMERA / SHEET ENGINE
+   ============================================================================ */
+let currentNodeIndex = null;
+let drawerMode = 'steps';
+let timerInterval = null;
+let timerSeconds = 0;
+
+const mapCanvas = document.getElementById('mapCanvas');
+const hoverBanner = document.getElementById('hoverBanner');
+const detailSheet = document.getElementById('detailSheet');
+const detailBackdrop = document.getElementById('detailBackdrop');
+const indexDrawer = document.getElementById('indexDrawer');
+
+/* Render clean Bottom Step Dock */
+const bottomDock = document.getElementById('bottomDock');
+NODES.forEach((n, idx) => {
+  const btn = document.createElement('button');
+  btn.className = 'dock-pill';
+  btn.dataset.dock = idx;
+  btn.style.setProperty('--d-color', n.color);
+  btn.innerHTML = `<span class="d-dot"></span>${n.dockLabel}`;
+  btn.addEventListener('mouseenter', () => setHoverNode(idx));
+  btn.addEventListener('mouseleave', () => setHoverNode(null));
+  btn.addEventListener('click', () => openNode(idx));
+  bottomDock.appendChild(btn);
+});
+
+/* Sync hover highlights between map zones and bottom dock */
+document.querySelectorAll('[data-node]').forEach(el => {
+  const idx = Number(el.dataset.node);
+  el.addEventListener('mouseenter', () => setHoverNode(idx));
+  el.addEventListener('mouseleave', () => setHoverNode(null));
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    openNode(idx);
+  });
+});
+
+function setHoverNode(idx) {
+  document.querySelectorAll('[data-node]').forEach(el => {
+    el.classList.toggle('hovered', Number(el.dataset.node) === idx);
+  });
+  document.querySelectorAll('.dock-pill').forEach(el => {
+    el.classList.toggle('hovered', Number(el.dataset.dock) === idx);
+  });
+  if (idx !== null && NODES[idx]) {
+    hoverBanner.textContent = `👆 點擊展開：${NODES[idx].dockLabel} — ${NODES[idx].title}`;
+    hoverBanner.style.background = NODES[idx].color;
+    hoverBanner.classList.add('show');
+  } else {
+    hoverBanner.classList.remove('show');
+  }
+}
+
+function openNode(idx) {
+  currentNodeIndex = (idx + NODES.length) % NODES.length;
+  const node = NODES[currentNodeIndex];
+
+  document.querySelectorAll('[data-node]').forEach(el => {
+    el.classList.toggle('selected', Number(el.dataset.node) === currentNodeIndex);
+  });
+  document.querySelectorAll('.dock-pill').forEach((d, i) => {
+    d.classList.toggle('active', i === currentNodeIndex);
+  });
+
+  // Gentle camera zoom toward the selected area on 大綱.png
+  const z = node.zoom || { x: 0, y: 0, scale: 1.28 };
+  mapCanvas.style.transform = `translate(${z.x}%, ${z.y - 10}%) scale(${z.scale})`;
+
+  detailSheet.style.setProperty('--node-color', node.color);
+  detailSheet.style.setProperty('--node-soft', node.soft);
+
+  document.getElementById('sheetBadge').innerHTML = `<span>${node.code}</span><small>${node.sub}</small>`;
+  document.getElementById('sheetEyebrow').textContent = node.eyebrow;
+  document.getElementById('sheetTitle').textContent = node.title;
+  document.getElementById('sheetQuote').textContent = node.quote;
+  document.getElementById('sheetPills').innerHTML = node.pills
+    .map(p => `<span class="meta-pill"><span class="c-dot"></span>${p}</span>`).join('');
+
+  const bodyEl = document.getElementById('sheetBody');
+  bodyEl.innerHTML = `
+    <div class="section-label">
+      <span>執行細項與 AI 實務示範（點擊任一細項展開／收合）</span>
+      <button class="icon-btn" style="height:30px;font-size:12.5px" onclick="toggleAllSubitems()">展開 / 收合全部</button>
+    </div>
+    <div class="subitem-list">
+      ${node.items.map((item, i) => `
+        <article class="subitem ${item.open ? 'open' : ''}" id="subitem-${i}">
+          <button class="subitem-head" onclick="toggleSubitem(${i})">
+            <span class="subitem-dot"></span>
+            <span class="subitem-title">${item.title}</span>
+            <span class="subitem-tag">${item.tag}</span>
+            <span class="subitem-arrow">›</span>
+          </button>
+          <div class="subitem-content">${item.html}</div>
+        </article>
+      `).join('')}
+    </div>
+  `;
+  bodyEl.scrollTop = 0;
+
+  detailBackdrop.classList.add('open');
+  detailSheet.classList.add('open');
+}
+
+function closeNode() {
+  currentNodeIndex = null;
+  detailBackdrop.classList.remove('open');
+  detailSheet.classList.remove('open');
+  mapCanvas.style.transform = 'translate(0, 0) scale(1)';
+  document.querySelectorAll('[data-node]').forEach(el => el.classList.remove('selected'));
+  document.querySelectorAll('.dock-pill').forEach(d => d.classList.remove('active'));
+}
+
+function resetOverview() {
+  closeNode();
+  toggleDrawer(false);
+}
+
+function stepNode(delta) {
+  if (currentNodeIndex === null) openNode(0);
+  else openNode(currentNodeIndex + delta);
+}
+
+function toggleSubitem(i) {
+  const el = document.getElementById('subitem-' + i);
+  if (el) el.classList.toggle('open');
+}
+
+function toggleAllSubitems() {
+  const list = [...document.querySelectorAll('#sheetBody .subitem')];
+  const anyClosed = list.some(el => !el.classList.contains('open'));
+  list.forEach(el => el.classList.toggle('open', anyClosed));
+}
+
+function toggleSheetExpand() {
+  const exp = detailSheet.classList.toggle('expanded');
+  document.getElementById('expandBtn').textContent = exp ? '⤡ 縮小視窗' : '⤢ 放大視窗';
+}
+
+function toggleCornerDots() {
+  const hidden = document.body.classList.toggle('hide-dots');
+  document.getElementById('dotToggleBtn').classList.toggle('active', hidden);
+}
+
+/* Drawer (Steps Directory & Prompt Library) */
+function toggleDrawer(force) {
+  const open = typeof force === 'boolean' ? force : !indexDrawer.classList.contains('open');
+  indexDrawer.classList.toggle('open', open);
+  document.getElementById('drawerBtn').classList.toggle('active', open);
+  if (open) renderDrawer();
+}
+
+function switchDrawerTab(mode) {
+  drawerMode = mode;
+  document.getElementById('tabStepsBtn').classList.toggle('active', mode === 'steps');
+  document.getElementById('tabPromptsBtn').classList.toggle('active', mode === 'prompts');
+  renderDrawer();
+}
+
+function renderDrawer() {
+  const box = document.getElementById('drawerContent');
+  if (drawerMode === 'steps') {
+    box.innerHTML = NODES.map((n, i) => `
+      <div class="index-item" onclick="toggleDrawer(false); openNode(${i});">
+        <div class="sheet-badge" style="min-width:48px;height:48px;font-size:14px;background:${n.soft};color:${n.color}">
+          <span>${n.code}</span>
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11.5px;font-weight:900;color:${n.color}">${n.eyebrow.split('·')[0]}</div>
+          <div style="font-size:15.5px;font-weight:800;color:var(--ink)">${n.title}</div>
+          <div style="font-size:12.5px;color:var(--muted);margin-top:2px">${n.items.length} 個細項與示範 ›</div>
+        </div>
+      </div>
+    `).join('');
+  } else {
+    box.innerHTML = PROMPT_LIBRARY.map(p => `
+      <div class="info-card" style="background:#fff">
+        <div style="font-size:12px;font-weight:900;color:var(--coral)">${p.step}</div>
+        <h4 style="margin:3px 0 8px">${p.title}</h4>
+        <div class="prompt-box" style="margin-top:4px;padding:10px 12px;font-size:13.5px">
+          <div class="p-head"><span>Prompt</span><button class="copy-btn" onclick="copyText(this)">複製</button></div>
+          <pre>${p.text}</pre>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+/* Copy Prompt helper */
+function copyText(btn) {
+  const pre = btn.closest('.prompt-box').querySelector('pre');
+  const text = pre ? pre.innerText : '';
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text);
+  } else {
+    const ta = document.createElement('textarea');
+    ta.value = text; document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+  }
+  const orig = btn.textContent;
+  btn.textContent = '已複製 ✓';
+  setTimeout(() => btn.textContent = orig, 1400);
+}
+
+/* Interactive Quiz inside Step 4 */
+function checkQuiz(btn, isCorrect) {
+  const box = btn.closest('.quiz-box');
+  box.querySelectorAll('.quiz-opt').forEach(b => b.classList.remove('correct', 'wrong'));
+  btn.classList.add(isCorrect ? 'correct' : 'wrong');
+  const msg = box.querySelector('#quizFeedbackMsg');
+  msg.style.color = isCorrect ? '#1F8A4C' : '#B91C1C';
+  msg.textContent = isCorrect
+    ? '✔ 答對了！公版 EPA1 OPA3(4) 明訂：「受檢者緊急狀況處理（血腫、暈針等）」屬於採血後處置。'
+    : '✘ 再試試看！提示：拔針後發生的緊急狀況，屬於採血完成後的哪個階段？';
+}
+
+/* Lightbox for Flowchart Diagrams */
+function openLightbox(src) {
+  const lb = document.getElementById('lightbox');
+  document.getElementById('lightboxImg').src = src;
+  lb.classList.add('show');
+}
+
+/* Workshop 45-min Timer & Fullscreen */
+function toggleTimer() {
+  const btn = document.getElementById('timerBtn');
+  if (timerInterval) {
+    clearInterval(timerInterval);
+    timerInterval = null;
+    btn.classList.remove('active');
+  } else {
+    btn.classList.add('active');
+    timerInterval = setInterval(() => {
+      timerSeconds++;
+      const m = String(Math.floor(timerSeconds / 60)).padStart(2, '0');
+      const s = String(timerSeconds % 60).padStart(2, '0');
+      btn.textContent = `⏱ ${m}:${s} / 45:00`;
+    }, 1000);
+  }
+}
+
+function toggleFull() {
+  if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+  else document.exitFullscreen();
+}
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    const lb = document.getElementById('lightbox');
+    if (lb.classList.contains('show')) lb.classList.remove('show');
+    else if (detailSheet.classList.contains('open')) closeNode();
+    else if (indexDrawer.classList.contains('open')) toggleDrawer(false);
+  } else if (e.key === 'ArrowRight' && currentNodeIndex !== null) {
+    stepNode(1);
+  } else if (e.key === 'ArrowLeft' && currentNodeIndex !== null) {
+    stepNode(-1);
+  }
+});
+</script>
+</body>
+</html>
